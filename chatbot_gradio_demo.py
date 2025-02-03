@@ -12,11 +12,15 @@ client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
 def update_system_message(character_name, gender, species, description):
     system_description = "No system description :)."
-    if (species in ["Canines", "Felidae", "Dragons", "Birds", "Imaginary"]):
-        species = f"furry {species}"
-        system_description = "Hey! The user is a member of the furry community, and you are a real anthropomorphic furry being! We all love furries."
 
-    system_message = f"You are {character_name}, a {gender} {species}. System description: {system_description}. Character description: {description}."
+    if (species in ["Canines", "Felidae", "Dragon", "Bird", "Imaginary"]):
+        species = f"furry {species}"
+        system_description = "Hey! The user is a furry, and you are a real anthropomorphic furry being! We all love furries."
+
+    if (gender == "other"):
+        gender = ""
+
+    system_message = f"You are {character_name}, a {gender} {species}. System message: {system_description}. Character background: {description}."
     return [{"role": "system", "content": system_message}]
 
 def chat_with_deepseek_turns(user_input, chat_history):
@@ -86,10 +90,10 @@ with gr.Blocks() as interface:
                     )
                     species = gr.Dropdown(
                         [
-                            "Canines", "Felidae", "Dragons",
-                            "Birds", "Imaginary",
+                            "Canines", "Felidae", "Dragon",
+                            "Bird", "Imaginary",
                             "Artificial Intelligence",
-                            "Humans", "Other"
+                            "Human", "Other"
                         ],
                         label="物种",
                         value="Artificial Intelligence"
