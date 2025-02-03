@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import tempfile
 from openai import OpenAI
 import gradio as gr
 
@@ -14,6 +15,10 @@ def update_system_message(character_name, gender, species, description, scenario
     system_description = "No system message :)." # default
     if not scenario:
         scenario = f"{character_name} just accidentally meet the user." # default
+def update_system_message(character_name, gender, species, description, scenario):
+    system_description = "No system message :)." # default
+    if not scenario:
+        scenario = f"{character_name} just accidentally meet the user." # default
 
     if (species in ["Canines", "Felidae", "Dragon", "Bird", "Imaginary"]):
         species = f"furry {species}"
@@ -22,6 +27,37 @@ def update_system_message(character_name, gender, species, description, scenario
     if (gender == "other"):
         gender = ""
 
+    system_message = (
+        f"You are {character_name}, a {gender} {species}. This is {character_name}'s background: {description}. "
+        f"Here is the current scenario: {scenario}"
+        f"System message: {system_description}. "
+    )
+
+    new_chat_history = [
+        {"role": "system", "content": system_message},
+    ]
+
+    try:
+        # Make an API call to get the first assistant response
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=new_chat_history,
+            max_tokens=1024,
+            temperature=1.3,
+            stream=False
+        )
+        assistant_message = response.choices[0].message.content
+
+        # Add the assistant response to the new chat history
+        new_chat_history.append({"role": "assistant", "content": assistant_message})
+
+        # Return the new history to display in the chatbot and store in state
+        return new_chat_history, new_chat_history
+
+    except Exception as e:
+        # If there is any error, return the error as a user-like message
+        error_message = f"Error: {str(e)}"
+        return [{"role": "assistant", "content": error_message}], []
     system_message = (
         f"You are {character_name}, a {gender} {species}. This is {character_name}'s background: {description}. "
         f"Here is the current scenario: {scenario}"
@@ -80,6 +116,57 @@ def chat_with_deepseek_turns(user_input, chat_history):
 
     except Exception as e:
         return f"Error: {e}", chat_history
+    
+def save_character_config(character_name, gender, species, description, scenario):
+    """生成配置文件（修正版）"""
+    content = f"""角色名称:{character_name}
+            性别:{gender}
+            物种:{species}
+            角色简介:{description}
+            情景简介:{scenario or '未设置情景'}"""
+    
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w+',
+            suffix=".txt",
+            encoding='utf-8',
+            delete=False,
+            newline=''  # 避免Windows换行问题
+        ) as temp_file:
+            temp_file.write(content)
+            temp_file.flush()
+            os.chmod(temp_file.name, 0o644)  # 设置权限
+            return temp_file.name
+
+    except Exception as e:
+        raise gr.Error(f"保存失败: {str(e)}")
+
+def load_character_config(file):
+    """解析配置文件"""
+    try:
+        with open(file.name, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        config = {}
+        for line in content.split("\n"):
+            if ":" in line:
+                key, value = line.split(":", 1)
+                config[key.strip()] = value.strip()
+        
+        # 返回四个组件的值
+        return [
+            config.get("角色名称", ""),
+            config.get("性别", "other"),
+            config.get("物种", "Artificial Intelligence"),
+            config.get("角色简介", ""),
+            config.get("情景简介", "")
+        ]
+    except Exception as e:
+        print(f"加载配置文件失败: {e}")
+        # 返回空值不改变现有内容
+        return [gr.update(), gr.update(), gr.update(), gr.update(), gr.update()]
+    
+
 
 
 
@@ -123,6 +210,15 @@ with gr.Blocks() as interface:
                         label="物种",
                         value="Artificial Intelligence"
                     )
+                    with gr.Column():
+                        # 下载按钮
+                        download_btn = gr.Button("下载设定", variant="secondary")
+                        # 上传组件
+                        upload_btn = gr.UploadButton(
+                            "上传设定",
+                            file_types=[".txt"],
+                            file_count="single"
+                        )
                 description = gr.Textbox(
                     label="角色简介",
                     lines=4,
@@ -142,6 +238,8 @@ with gr.Blocks() as interface:
                 inputs=[character_name, gender, species, description, scenario],
                 outputs=[chatbot, chat_state]
             )
+
+
 
 if __name__ == "__main__":
     interface.launch()
