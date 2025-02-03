@@ -15,10 +15,6 @@ def update_system_message(character_name, gender, species, description, scenario
     system_description = "No system message :)." # default
     if not scenario:
         scenario = f"{character_name} just accidentally meet the user." # default
-def update_system_message(character_name, gender, species, description, scenario):
-    system_description = "No system message :)." # default
-    if not scenario:
-        scenario = f"{character_name} just accidentally meet the user." # default
 
     if (species in ["Canines", "Felidae", "Dragon", "Bird", "Imaginary"]):
         species = f"furry {species}"
@@ -27,37 +23,6 @@ def update_system_message(character_name, gender, species, description, scenario
     if (gender == "other"):
         gender = ""
 
-    system_message = (
-        f"You are {character_name}, a {gender} {species}. This is {character_name}'s background: {description}. "
-        f"Here is the current scenario: {scenario}"
-        f"System message: {system_description}. "
-    )
-
-    new_chat_history = [
-        {"role": "system", "content": system_message},
-    ]
-
-    try:
-        # Make an API call to get the first assistant response
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=new_chat_history,
-            max_tokens=1024,
-            temperature=1.3,
-            stream=False
-        )
-        assistant_message = response.choices[0].message.content
-
-        # Add the assistant response to the new chat history
-        new_chat_history.append({"role": "assistant", "content": assistant_message})
-
-        # Return the new history to display in the chatbot and store in state
-        return new_chat_history, new_chat_history
-
-    except Exception as e:
-        # If there is any error, return the error as a user-like message
-        error_message = f"Error: {str(e)}"
-        return [{"role": "assistant", "content": error_message}], []
     system_message = (
         f"You are {character_name}, a {gender} {species}. This is {character_name}'s background: {description}. "
         f"Here is the current scenario: {scenario}"
@@ -238,8 +203,19 @@ with gr.Blocks() as interface:
                 inputs=[character_name, gender, species, description, scenario],
                 outputs=[chatbot, chat_state]
             )
+            # 绑定下载功能
+            download_btn.click(
+                save_character_config,
+                inputs=[character_name, gender, species, description, scenario],  # 传入scenario
+                outputs=gr.File(label="下载设定文件")
+            )
 
-
+            # 绑定上传功能
+            upload_btn.upload(
+                load_character_config,
+                inputs=upload_btn,
+                outputs=[character_name, gender, species, description, scenario]
+            )
 
 if __name__ == "__main__":
     interface.launch()
