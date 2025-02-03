@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import tempfile
 from openai import OpenAI
 import gradio as gr
 
@@ -80,6 +81,57 @@ def chat_with_deepseek_turns(user_input, chat_history):
 
     except Exception as e:
         return f"Error: {e}", chat_history
+    
+def save_character_config(character_name, gender, species, description, scenario):
+    """生成配置文件（修正版）"""
+    content = f"""角色名称:{character_name}
+            性别:{gender}
+            物种:{species}
+            角色简介:{description}
+            情景简介:{scenario or '未设置情景'}"""
+    
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w+',
+            suffix=".txt",
+            encoding='utf-8',
+            delete=False,
+            newline=''  # 避免Windows换行问题
+        ) as temp_file:
+            temp_file.write(content)
+            temp_file.flush()
+            os.chmod(temp_file.name, 0o644)  # 设置权限
+            return temp_file.name
+
+    except Exception as e:
+        raise gr.Error(f"保存失败: {str(e)}")
+
+def load_character_config(file):
+    """解析配置文件"""
+    try:
+        with open(file.name, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        config = {}
+        for line in content.split("\n"):
+            if ":" in line:
+                key, value = line.split(":", 1)
+                config[key.strip()] = value.strip()
+        
+        # 返回四个组件的值
+        return [
+            config.get("角色名称", ""),
+            config.get("性别", "other"),
+            config.get("物种", "Artificial Intelligence"),
+            config.get("角色简介", ""),
+            config.get("情景简介", "")
+        ]
+    except Exception as e:
+        print(f"加载配置文件失败: {e}")
+        # 返回空值不改变现有内容
+        return [gr.update(), gr.update(), gr.update(), gr.update(), gr.update()]
+    
+
 
 
 
@@ -123,6 +175,15 @@ with gr.Blocks() as interface:
                         label="物种",
                         value="Artificial Intelligence"
                     )
+                    with gr.Column():
+                        # 下载按钮
+                        download_btn = gr.Button("下载设定", variant="secondary")
+                        # 上传组件
+                        upload_btn = gr.UploadButton(
+                            "上传设定",
+                            file_types=[".txt"],
+                            file_count="single"
+                        )
                 description = gr.Textbox(
                     label="角色简介",
                     lines=4,
@@ -141,6 +202,19 @@ with gr.Blocks() as interface:
                 fn=update_system_message,
                 inputs=[character_name, gender, species, description, scenario],
                 outputs=[chatbot, chat_state]
+            )
+            # 绑定下载功能
+            download_btn.click(
+                save_character_config,
+                inputs=[character_name, gender, species, description, scenario],  # 传入scenario
+                outputs=gr.File(label="下载设定文件")
+            )
+
+            # 绑定上传功能
+            upload_btn.upload(
+                load_character_config,
+                inputs=upload_btn,
+                outputs=[character_name, gender, species, description, scenario]
             )
 
 if __name__ == "__main__":
