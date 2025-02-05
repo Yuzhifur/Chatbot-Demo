@@ -217,5 +217,6 @@ with gr.Blocks() as interface:
                 outputs=[character_name, gender, species, description, scenario]
             )
 
+'testing commit activity'
 if __name__ == "__main__":
     interface.launch()
