@@ -4,7 +4,7 @@ demo/
 # Python cache files
 __pycache__/
 *.py[cod]
-*.pyo
+*.pyox
 
 # Logs and database files
 *.log

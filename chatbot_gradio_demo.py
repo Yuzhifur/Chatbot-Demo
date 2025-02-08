@@ -12,7 +12,8 @@ api_key = os.getenv("DEEPSEEK_API_KEY")
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
 def update_system_message(character_name, gender, species, description, scenario):
-    system_description = "No system message :)." # default
+    default_talking_style_description = "Unless the user explicitly specifies the character's talking preference, you should default to be very talkative and almost use up the token limits every time!"
+    system_description = "No more system message :)." # default
     if not scenario:
         scenario = f"{character_name} just accidentally meet the user." # default
 
@@ -26,7 +27,7 @@ def update_system_message(character_name, gender, species, description, scenario
     system_message = (
         f"You are {character_name}, a {gender} {species}. This is {character_name}'s background: {description}. "
         f"Here is the current scenario: {scenario}"
-        f"System message: {system_description}. "
+        f"System message: {default_talking_style_description} {system_description} "
     )
 
     new_chat_history = [
@@ -55,20 +56,27 @@ def update_system_message(character_name, gender, species, description, scenario
         error_message = f"Error: {str(e)}"
         return [{"role": "assistant", "content": error_message}], []
 
-def chat_with_deepseek_turns(user_input, chat_history):
+def chat_with_deepseek_turns(user_input, chat_history, tokens):
     try:
-        # If chat history is empty, initialize it
         if not chat_history:
             chat_history = [{"role": "system", "content": "You are a furry femboy"}] # default
 
-        # Add the user's message to the chat history
         chat_history.append({"role": "user", "content": user_input})
+
+        max_tokens = 1024
+        if (tokens):
+            if (tokens == "short"):
+                max_tokens = 128
+            elif (tokens == "medium"):
+                max_tokens = 256
+            else:
+                max_tokens = 512
 
 
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=chat_history,
-            max_tokens=1024,
+            max_tokens=max_tokens,
             temperature=1.3,
             stream=False
         )
@@ -81,7 +89,7 @@ def chat_with_deepseek_turns(user_input, chat_history):
 
     except Exception as e:
         return f"Error: {e}", chat_history
-    
+
 def save_character_config(character_name, gender, species, description, scenario):
     """生成配置文件（修正版）"""
     content = f"""角色名称:{character_name}
@@ -89,7 +97,7 @@ def save_character_config(character_name, gender, species, description, scenario
             物种:{species}
             角色简介:{description}
             情景简介:{scenario or '未设置情景'}"""
-    
+
     try:
         with tempfile.NamedTemporaryFile(
             mode='w+',
@@ -111,13 +119,13 @@ def load_character_config(file):
     try:
         with open(file.name, "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         config = {}
         for line in content.split("\n"):
             if ":" in line:
                 key, value = line.split(":", 1)
                 config[key.strip()] = value.strip()
-        
+
         # 返回四个组件的值
         return [
             config.get("角色名称", ""),
@@ -130,7 +138,7 @@ def load_character_config(file):
         print(f"加载配置文件失败: {e}")
         # 返回空值不改变现有内容
         return [gr.update(), gr.update(), gr.update(), gr.update(), gr.update()]
-    
+
 
 
 
@@ -147,12 +155,17 @@ with gr.Blocks() as interface:
                 height=500
             )
             user_input = gr.Textbox(label="输入消息")
+            max_token = gr.Dropdown(
+                        ["short", "medium", "long"],
+                        label="回复长度",
+                        value="medium"
+                    )
             chat_state = gr.State([])
 
             send_btn = gr.Button("发送")
             send_btn.click(
                 fn=chat_with_deepseek_turns,
-                inputs=[user_input, chat_state],
+                inputs=[user_input, chat_state, max_token],
                 outputs=[chatbot, chat_state]
             )
 
