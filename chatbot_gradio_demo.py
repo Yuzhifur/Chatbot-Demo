@@ -11,6 +11,7 @@ api_key = os.getenv("DEEPSEEK_API_KEY")
 # Initialize the DeepSeek API client
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
+# Test: this is for developer 2
 def update_system_message(character_name, gender, species, description, scenario):
     default_talking_style_description = "Unless the user explicitly specifies the character's talking preference, you should default to be very talkative and almost use up the token limits every time!"
     system_description = "No more system message :)." # default
