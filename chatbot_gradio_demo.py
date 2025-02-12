@@ -4,19 +4,18 @@ import tempfile
 from openai import OpenAI
 import gradio as gr
 
-# Load environment variables
+# 加载环境变量
 load_dotenv()
 api_key = os.getenv("DEEPSEEK_API_KEY")
 
-# Initialize the DeepSeek API client
+# 初始化 DeepSeek API 客户端
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
-# Test: this is for developer 2
 def update_system_message(character_name, gender, species, description, scenario):
     default_talking_style_description = "Unless the user explicitly specifies the character's talking preference, you should default to be very talkative and almost use up the token limits every time!"
-    system_description = "No more system message :)." # default
+    system_description = "No more system message :)."  # default
     if not scenario:
-        scenario = f"{character_name} just accidentally meet the user." # default
+        scenario = f"{character_name} just accidentally meet the user."  # default
 
     if (species in ["Canines", "Felidae", "Dragon", "Bird", "Imaginary"]):
         species = f"furry {species}"
@@ -36,7 +35,6 @@ def update_system_message(character_name, gender, species, description, scenario
     ]
 
     try:
-        # Make an API call to get the first assistant response
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=new_chat_history,
@@ -45,34 +43,28 @@ def update_system_message(character_name, gender, species, description, scenario
             stream=False
         )
         assistant_message = response.choices[0].message.content
-
-        # Add the assistant response to the new chat history
         new_chat_history.append({"role": "assistant", "content": assistant_message})
-
-        # Return the new history to display in the chatbot and store in state
         return new_chat_history, new_chat_history
 
     except Exception as e:
-        # If there is any error, return the error as a user-like message
         error_message = f"Error: {str(e)}"
         return [{"role": "assistant", "content": error_message}], []
 
 def chat_with_deepseek_turns(user_input, chat_history, tokens):
     try:
         if not chat_history:
-            chat_history = [{"role": "system", "content": "You are a furry femboy"}] # default
+            chat_history = [{"role": "system", "content": "You are a furry femboy"}]  # 默认系统消息
 
         chat_history.append({"role": "user", "content": user_input})
 
         max_tokens = 1024
-        if (tokens):
-            if (tokens == "short"):
+        if tokens:
+            if tokens == "short":
                 max_tokens = 128
-            elif (tokens == "medium"):
+            elif tokens == "medium":
                 max_tokens = 256
             else:
                 max_tokens = 512
-
 
         response = client.chat.completions.create(
             model="deepseek-chat",
@@ -84,20 +76,17 @@ def chat_with_deepseek_turns(user_input, chat_history, tokens):
 
         assistant_message = response.choices[0].message.content
         chat_history.append({"role": "assistant", "content": assistant_message})
-
-
         return chat_history, chat_history
 
     except Exception as e:
         return f"Error: {e}", chat_history
 
 def save_character_config(character_name, gender, species, description, scenario):
-    """生成配置文件（修正版）"""
     content = f"""角色名称:{character_name}
-            性别:{gender}
-            物种:{species}
-            角色简介:{description}
-            情景简介:{scenario or '未设置情景'}"""
+性别:{gender}
+物种:{species}
+角色简介:{description}
+情景简介:{scenario or '未设置情景'}"""
 
     try:
         with tempfile.NamedTemporaryFile(
@@ -105,18 +94,17 @@ def save_character_config(character_name, gender, species, description, scenario
             suffix=".txt",
             encoding='utf-8',
             delete=False,
-            newline=''  # 避免Windows换行问题
+            newline=''
         ) as temp_file:
             temp_file.write(content)
             temp_file.flush()
-            os.chmod(temp_file.name, 0o644)  # 设置权限
+            os.chmod(temp_file.name, 0o644)
             return temp_file.name
 
     except Exception as e:
         raise gr.Error(f"保存失败: {str(e)}")
 
 def load_character_config(file):
-    """解析配置文件"""
     try:
         with open(file.name, "r", encoding="utf-8") as f:
             content = f.read()
@@ -127,7 +115,6 @@ def load_character_config(file):
                 key, value = line.split(":", 1)
                 config[key.strip()] = value.strip()
 
-        # 返回四个组件的值
         return [
             config.get("角色名称", ""),
             config.get("性别", "other"),
@@ -137,12 +124,28 @@ def load_character_config(file):
         ]
     except Exception as e:
         print(f"加载配置文件失败: {e}")
-        # 返回空值不改变现有内容
         return [gr.update(), gr.update(), gr.update(), gr.update(), gr.update()]
 
 
 
+# 新增：删除最后一轮对话的函数
+def delete_last_turn(chat_history):
+    """
+    删除最后一轮对话：
+    - 系统消息（第一条）永远保留
+    - 如果存在一轮完整对话（用户和 assistant 消息各一条），则删除这两条
+    - 如果只有一条消息，则仅删除这一条
+    """
+    if not chat_history or len(chat_history) <= 1:
+        # 只有系统消息，无法删除
+        return chat_history, chat_history
 
+    # 判断是否为完整的一对消息（假定对话总是以系统消息开始，后面成对出现）
+    if len(chat_history) >= 3:
+        new_history = chat_history[:-2]
+    else:
+        new_history = chat_history[:-1]
+    return new_history, new_history
 
 with gr.Blocks() as interface:
     gr.Markdown("### DeepSeek Gradio Chat")
@@ -157,16 +160,32 @@ with gr.Blocks() as interface:
             )
             user_input = gr.Textbox(label="输入消息")
             max_token = gr.Dropdown(
-                        ["short", "medium", "long"],
-                        label="回复长度",
-                        value="medium"
-                    )
+                ["short", "medium", "long"],
+                label="回复长度",
+                value="medium"
+            )
             chat_state = gr.State([])
 
-            send_btn = gr.Button("发送")
+            with gr.Row():
+                send_btn = gr.Button("发送")
+                # 新增的删除按钮，每次点击删除最后一轮对话
+                delete_btn = gr.Button("回溯", variant="secondary")
+
+            # 点击“发送”后调用对话函数，同时返回更新后的对话记录
+            def chat_and_update(user_input, chat_history, tokens):
+                new_history, updated_history = chat_with_deepseek_turns(user_input, chat_history, tokens)
+                return new_history, updated_history
+
             send_btn.click(
-                fn=chat_with_deepseek_turns,
+                fn=chat_and_update,
                 inputs=[user_input, chat_state, max_token],
+                outputs=[chatbot, chat_state]
+            )
+
+            # 点击“删除最后一轮对话”按钮，调用删除函数更新对话记录和显示
+            delete_btn.click(
+                fn=delete_last_turn,
+                inputs=chat_state,
                 outputs=[chatbot, chat_state]
             )
 
@@ -190,9 +209,7 @@ with gr.Blocks() as interface:
                         value="Artificial Intelligence"
                     )
                     with gr.Column():
-                        # 下载按钮
                         download_btn = gr.Button("下载设定", variant="secondary")
-                        # 上传组件
                         upload_btn = gr.UploadButton(
                             "上传设定",
                             file_types=[".txt"],
@@ -210,27 +227,21 @@ with gr.Blocks() as interface:
                 )
 
             save_btn = gr.Button("确认设定", variant="primary")
-            # On confirming character info, call update_system_message
-            # which returns the first assistant response as new chat_history
             save_btn.click(
                 fn=update_system_message,
                 inputs=[character_name, gender, species, description, scenario],
                 outputs=[chatbot, chat_state]
             )
-            # 绑定下载功能
             download_btn.click(
-                save_character_config,
-                inputs=[character_name, gender, species, description, scenario],  # 传入scenario
+                fn=save_character_config,
+                inputs=[character_name, gender, species, description, scenario],
                 outputs=gr.File(label="下载设定文件")
             )
-
-            # 绑定上传功能
             upload_btn.upload(
-                load_character_config,
+                fn=load_character_config,
                 inputs=upload_btn,
                 outputs=[character_name, gender, species, description, scenario]
             )
 
-'testing commit activity'
 if __name__ == "__main__":
     interface.launch()
