@@ -11,7 +11,7 @@ api_key = os.getenv("DEEPSEEK_API_KEY")
 # 初始化 DeepSeek API 客户端
 client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
-def update_system_message(character_name, age, gender, species, description, background, scenario, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference):
+def update_system_message(character_name, age, gender, species, description, background, scenario, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference, model):
     #system_description = "No more system message :)."  # default
     if not background:
         background = "No background provided."
@@ -162,23 +162,25 @@ def update_system_message(character_name, age, gender, species, description, bac
         {"role": "system", "content": system_message},
     ]
 
-    try:
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=new_chat_history,
-            max_tokens=1024,
-            temperature=1.3,
-            stream=False
-        )
-        assistant_message = response.choices[0].message.content
-        new_chat_history.append({"role": "assistant", "content": assistant_message})
+    if (model == "deepseek-chat"):
+        try:
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=new_chat_history,
+                max_tokens=1024,
+                temperature=1.3,
+                stream=False
+            )
+            assistant_message = response.choices[0].message.content
+            new_chat_history.append({"role": "assistant", "content": assistant_message})
+            return new_chat_history, new_chat_history
+        except Exception as e:
+            error_message = f"Error: {str(e)}"
+            return [{"role": "assistant", "content": error_message}], []
+    else:
         return new_chat_history, new_chat_history
 
-    except Exception as e:
-        error_message = f"Error: {str(e)}"
-        return [{"role": "assistant", "content": error_message}], []
-
-def chat_with_deepseek_turns(user_input, chat_history, tokens):
+def chat_with_deepseek_turns(user_input, chat_history, tokens, model):
     try:
         if not chat_history:
             chat_history = [{"role": "system", "content": "You are a helpful assistant"}]  # 默认系统消息
@@ -195,16 +197,19 @@ def chat_with_deepseek_turns(user_input, chat_history, tokens):
                 max_tokens = 512
 
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model=model,
             messages=chat_history,
             max_tokens=max_tokens,
             temperature=1.5,
             stream=False
         )
 
+        reasoning_message = ""
+        if (model == "deepseek-reasoner"):
+            reasoning_message = response.choices[0].message.reasoning_content
         assistant_message = response.choices[0].message.content
         chat_history.append({"role": "assistant", "content": assistant_message})
-        return chat_history, chat_history
+        return chat_history, chat_history, reasoning_message
 
     except Exception as e:
         return f"Error: {e}", chat_history
@@ -309,31 +314,43 @@ with gr.Blocks() as interface:
                 bubble_full_width=False,
                 height=500
             )
+            # 新增的推理过程展示组件
+            reasoning_display = gr.Textbox(
+                label="R1深度思考",
+                interactive=False,  # 设置为不可交互
+                placeholder="此处展示模型推理内容...",
+                visible=True
+            )
             user_input = gr.Textbox(label="输入消息")
             max_token = gr.Dropdown(
                 ["short", "medium", "long"],
                 label="回复长度",
                 value="medium"
             )
+            model = gr.Dropdown(
+                ["deepseek-chat", "deepseek-reasoner"],
+                label="模型选择",
+                value="deepseek-reasoner"
+            )
             chat_state = gr.State([])
 
             with gr.Row():
                 send_btn = gr.Button("发送")
-                # 新增的删除按钮，每次点击删除最后一轮对话
                 delete_btn = gr.Button("回溯", variant="secondary")
 
-            # 点击“发送”后调用对话函数，同时返回更新后的对话记录
-            def chat_and_update(user_input, chat_history, tokens):
-                new_history, updated_history = chat_with_deepseek_turns(user_input, chat_history, tokens)
-                return new_history, updated_history
+
+            def chat_and_update(user_input, chat_history, tokens, model):
+                new_history, updated_history, reasoning_content = chat_with_deepseek_turns(
+                    user_input, chat_history, tokens, model
+                )
+                return new_history, updated_history, reasoning_content  # 返回三个值
 
             send_btn.click(
-                fn=chat_and_update,
-                inputs=[user_input, chat_state, max_token],
-                outputs=[chatbot, chat_state]
+                fn=chat_with_deepseek_turns,
+                inputs=[user_input, chat_state, max_token, model],
+                outputs=[chatbot, chat_state, reasoning_display]  # 新增输出项
             )
 
-            # 点击“删除最后一轮对话”按钮，调用删除函数更新对话记录和显示
             delete_btn.click(
                 fn=delete_last_turn,
                 inputs=chat_state,
@@ -448,7 +465,7 @@ with gr.Blocks() as interface:
             save_btn = gr.Button("确认设定", variant="primary")
             save_btn.click(
                 fn=update_system_message,
-                inputs=[character_name, age, gender, species, description, background, scenario, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference],
+                inputs=[character_name, age, gender, species, description, background, scenario, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference, model],
                 outputs=[chatbot, chat_state]
             )
             download_btn.click(
