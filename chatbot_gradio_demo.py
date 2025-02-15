@@ -209,17 +209,28 @@ def chat_with_deepseek_turns(user_input, chat_history, tokens):
     except Exception as e:
         return f"Error: {e}", chat_history
 
-def save_character_config(character_name, gender, species, description, scenario):
+def save_character_config(character_name, gender, species, description, scenario, background, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference):
     content = f"""角色名称:{character_name}
 性别:{gender}
 物种:{species}
-角色简介:{description}
-情景简介:{scenario or '未设置情景'}"""
+角色简介:{description or "暂无简介"}
+情景简介:{scenario or '未设置情景'}
+角色背景及经历:{background or "未提供背景信息"}
+世界观:{world_view_d or "未提供世界观信息"}
+家庭状况:{family_d or "未提供家庭信息"}
+住处:{living_d or "404 not Found"}
+职业:{job_d or "未提供职业信息"}
+着装:{outfit_d or "未提供服饰信息"}
+容貌身材:{appearance_d or "未提供角色外观信息"}
+性格:{temper_d or "未提供性格信息"}
+秘密:{secrets_d or "秘密未知"}
+特殊能力:{specials_d or "情报不足"}
+输出偏好:{out_preference}"""
 
     try:
         with tempfile.NamedTemporaryFile(
             mode='w+',
-            suffix=".txt",
+            suffix=f"_{character_name}.txt",
             encoding='utf-8',
             delete=False,
             newline=''
@@ -248,7 +259,18 @@ def load_character_config(file):
             config.get("性别", "other"),
             config.get("物种", "Artificial Intelligence"),
             config.get("角色简介", ""),
-            config.get("情景简介", "")
+            config.get("情景简介", ""),
+            config.get("角色背景及经历", ""),
+            config.get("世界观", ""),
+            config.get("家庭状况", ""),
+            config.get("住处", ""),
+            config.get("职业", ""),
+            config.get("着装", ""),
+            config.get("容貌身材", ""),
+            config.get("性格", ""),
+            config.get("秘密", ""),
+            config.get("特殊能力", ""),
+            config.get("输出偏好", "普通")
         ]
     except Exception as e:
         print(f"加载配置文件失败: {e}")
@@ -361,55 +383,55 @@ with gr.Blocks() as interface:
                         placeholder="故事刚刚开始时, 角色正在做什么..."
                     )
                     # new
-                    world_view = gr.Textbox(
+                    world_view_d = gr.Textbox(
                         label="世界观",
                         lines=4,
                         placeholder="世界观"
                     )
                     # new
-                    family = gr.Textbox(
+                    family_d = gr.Textbox(
                         label="家庭状况",
                         lines=4,
                         placeholder="家庭状况"
                     )
                     # new
-                    living = gr.Textbox(
+                    living_d = gr.Textbox(
                         label="住处",
                         lines=1,
                         placeholder="住处"
                     )
                     # new
-                    job = gr.Textbox(
+                    job_d = gr.Textbox(
                         label="职业",
                         lines=1,
                         placeholder="职业"
                     )
                     # new
-                    outfit = gr.Textbox(
+                    outfit_d = gr.Textbox(
                         label="着装",
                         lines=1,
                         placeholder="着装"
                     )
                     # new
-                    appearance = gr.Textbox(
+                    appearance_d = gr.Textbox(
                         label="容貌身材",
                         lines=1,
                         placeholder="容貌身材"
                     )
                     # new
-                    temper = gr.Textbox(
+                    temper_d = gr.Textbox(
                         label="性格",
                         lines=1,
                         placeholder="性格"
                     )
                     # new
-                    secrets = gr.Textbox(
+                    secrets_d = gr.Textbox(
                         label="秘密",
                         lines=1,
                         placeholder="秘密"
                     )
                     # new
-                    specials = gr.Textbox(
+                    specials_d = gr.Textbox(
                         label="特殊能力",
                         lines=1,
                         placeholder="特殊能力"
@@ -425,18 +447,18 @@ with gr.Blocks() as interface:
             save_btn = gr.Button("确认设定", variant="primary")
             save_btn.click(
                 fn=update_system_message,
-                inputs=[character_name, age, gender, species, description, background, scenario, world_view, family, living, job, outfit, appearance, temper, secrets, specials, out_preference],
+                inputs=[character_name, age, gender, species, description, background, scenario, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference],
                 outputs=[chatbot, chat_state]
             )
             download_btn.click(
                 fn=save_character_config,
-                inputs=[character_name, gender, species, description, scenario],
+                inputs=[character_name, gender, species, description, scenario, background, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference],
                 outputs=gr.File(label="下载设定文件")
             )
             upload_btn.upload(
                 fn=load_character_config,
                 inputs=upload_btn,
-                outputs=[character_name, gender, species, description, scenario]
+                outputs=[character_name, gender, species, description, scenario, background, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference]
             )
 
 if __name__ == "__main__":
