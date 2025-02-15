@@ -209,23 +209,24 @@ def chat_with_deepseek_turns(user_input, chat_history, tokens):
     except Exception as e:
         return f"Error: {e}", chat_history
 
-def save_character_config(character_name, gender, species, description, scenario, background, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference):
+def save_character_config(character_name, age, gender, species, description, scenario, background, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d):
     content = f"""角色名称:{character_name}
-性别:{gender}
-物种:{species}
-角色简介:{description or "暂无简介"}
-情景简介:{scenario or '未设置情景'}
-角色背景及经历:{background or "未提供背景信息"}
-世界观:{world_view_d or "未提供世界观信息"}
-家庭状况:{family_d or "未提供家庭信息"}
-住处:{living_d or "404 not Found"}
-职业:{job_d or "未提供职业信息"}
-着装:{outfit_d or "未提供服饰信息"}
-容貌身材:{appearance_d or "未提供角色外观信息"}
-性格:{temper_d or "未提供性格信息"}
-秘密:{secrets_d or "秘密未知"}
-特殊能力:{specials_d or "情报不足"}
-输出偏好:{out_preference}"""
+    年龄:{age}
+    性别:{gender}
+    物种:{species}
+    角色简介:{description or ""}
+    情景简介:{scenario or ""}
+    角色背景及经历:{background or ""}
+    世界观:{world_view_d or ""}
+    家庭状况:{family_d or ""}
+    住处:{living_d or ""}
+    职业:{job_d or ""}
+    着装:{outfit_d or ""}
+    容貌身材:{appearance_d or ""}
+    性格:{temper_d or ""}
+    秘密:{secrets_d or ""}
+    特殊能力:{specials_d or ""}
+    """
 
     try:
         with tempfile.NamedTemporaryFile(
@@ -256,6 +257,7 @@ def load_character_config(file):
 
         return [
             config.get("角色名称", ""),
+            config.get("年龄", ""),
             config.get("性别", "other"),
             config.get("物种", "Artificial Intelligence"),
             config.get("角色简介", ""),
@@ -270,7 +272,6 @@ def load_character_config(file):
             config.get("性格", ""),
             config.get("秘密", ""),
             config.get("特殊能力", ""),
-            config.get("输出偏好", "普通")
         ]
     except Exception as e:
         print(f"加载配置文件失败: {e}")
@@ -452,13 +453,13 @@ with gr.Blocks() as interface:
             )
             download_btn.click(
                 fn=save_character_config,
-                inputs=[character_name, gender, species, description, scenario, background, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference],
+                inputs=[character_name, age, gender, species, description, scenario, background, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d],
                 outputs=gr.File(label="下载设定文件")
             )
             upload_btn.upload(
                 fn=load_character_config,
                 inputs=upload_btn,
-                outputs=[character_name, gender, species, description, scenario, background, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d, out_preference]
+                outputs=[character_name, age, gender, species, description, scenario, background, world_view_d, family_d, living_d, job_d, outfit_d, appearance_d, temper_d, secrets_d, specials_d]
             )
 
 if __name__ == "__main__":
