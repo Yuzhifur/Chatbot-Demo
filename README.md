@@ -1,4 +1,4 @@
-# Chatbot-Demo
+# Chatbot-Demo V1.0
 
 A chatbot demo based on DeepSeek API, implemented with Gradio.
 
