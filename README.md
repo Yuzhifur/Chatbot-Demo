@@ -49,11 +49,11 @@ python chatbot_gradio_demo.py
 
 ## 注意事项
 
-- 如果选择 `deepseek-chat` 模型，点击“确认设定”后，系统会自动生成第一句对话。
-- 如果选择 `deepseek-reasoner` 模型，推理过程会显示在“R1深度思考”文本框中，请确保该功能可见。
+- 如果选择 `deepseek-chat` 模型，点击“确认设定”后，模型会自动生成第一句对话。
+- 如果选择 `deepseek-reasoner` 模型，点击“确认设定”后, 模型不会自动生成第一句对话。推理过程会显示在“R1深度思考”文本框中。
 
 ## 贡献与反馈
 
-如果您有任何问题或建议，欢迎在 GitHub 上提交 Issue 或 Pull Request。
-
 2025 github.com/Yuzhifur
+2025 github.com/JasonHistoria
+2025 github.com/ChangLiu-byte
